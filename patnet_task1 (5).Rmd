@@ -1,0 +1,182 @@
+---
+title: "Task 1"
+author: "Jhalak Gope"
+date: "April 15th 2022"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+    theme: flatly
+---
+
+```{r setup, include=TRUE}
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```
+
+Make sure that *cache = TRUE* so that the data does not need to be read each time you *knit* the document.
+
+### Preliminaries
+
+#### Read data
+
+When using R Markdown, I do not recommend to change the working directory within it. Therefore, you have two options to read the data.
+
+1.  Your R markdown file is located in the same folder as your data. With large data and many projects, this approach might become restrictive and inconvenient over time because you will either have to put many different project files in the same folder (difficult to keep overview) or you need to copy the raw data into many different places (inefficient use of storage).
+2.  You keep your project files and raw data separate and call data from its original place on your hard drive. In case you work on different computers or collaborate with others, I recommend to specify a variable *my.path* that can be adapted for each user.
+
+```{r read patent data}
+library(data.table)
+library(dplyr)
+library(ggplot2)
+library(stringr)
+
+# specify the path to data
+my.path <- "C:/Study/FSU MSc/S22/PatNet Sem/Patnet_data_202101/Patnet_data_202101/REGPAT_202101/"
+
+# Read data with fread. Absolute path is specified by using the paste command.
+EPO_Inv_reg <- fread(paste(my.path,"202101_EPO_Inv_reg.txt",sep=""), encoding = "UTF-8")
+EPO_IPC <- fread(paste(my.path,"202101_EPO_IPC.txt",sep=""), encoding = "UTF-8")
+REGPAT_Regions <- fread(paste(my.path,"REGPAT_Regions.txt",sep=""), encoding = "UTF-8")
+```
+
+#### Identify the "Jena" patents and create a barplot with patents over time
+
+As in the example file (patnet_examples.R), we now generate a list of application ids with at least one inventor from Jena and use this to subset the EPO_IPC table to include only Jena patents. To count each patent only once, we need unique combinations of *appln_id* and *prio_year*. The resulting dataframe *ID_prio_DEG03* is used to create a barplot with ggplot.
+
+```{r Jena patents}
+Appln_id_DEG03 <- unique(EPO_Inv_reg$Appln_id[EPO_Inv_reg$Reg_code == "DEG03"])
+ID_prio_DEG03 <- EPO_IPC[EPO_IPC$Appln_id %in% Appln_id_DEG03,] # Only the Jena patents
+ID_prio_DEG03 <- unique(ID_prio_DEG03[,c("appln_id","prio_year")]) # unique combinations of Application ID and Priority year
+
+ID_prio_DEG03
+
+ggplot(ID_prio_DEG03, aes(prio_year)) + geom_bar(fill = 'lightblue') + labs(x = "Priority Year", y = "# of patent applications") + ggtitle("Number of patent applications in Jena (DEG03)")
+```
+
+### Problem 1
+
+#### a) Identify all application IDs for patents by inventors located in the larger region 'Thüringen' and store them in the vector 'Appln_id_DEG0'. How many patents are there?
+
+**Note**: The larger region 'Thüringen' is provided in *Up_reg_code* ('DEG0') with *Up_reg_label* ('Thüringen') in REGPAT_Regions.
+
+```{r Problem 1a}
+#Your code and comments go here:
+
+## joining EPO_Inv_reg and REGPAT_Regions by Region Code and finding the application IDs for Thüringen region
+
+appid_regpat <- merge(EPO_Inv_reg, REGPAT_Regions, by.x = "reg_code", by.y = "reg_code",)
+Appln_id_DEG0 <- appid_regpat %>%
+                    filter(Up_reg_code == 'DEG0') %>%
+                    select(appln_id)
+count(Appln_id_DEG0)
+
+```
+
+#### b) Identify the inventor with most patented inventions in Thuringia. Provide the name and the number of inventions.
+
+```{r Problem 1b}
+
+## finding the number of patents for every inventor from Thuringia and sorting it in descending order
+person_id_no <- appid_regpat %>%
+                    filter(Up_reg_code == 'DEG0') %>%
+                    count(person_id, sort = TRUE)
+
+## Inventor with Person ID and Person Name
+inventor_maxpatent <- (appid_regpat %>%
+                        filter(person_id == as.numeric(person_id_no[1,1])) %>%
+                        select(person_id, inv_name))[1,]
+
+inventor_maxpatent
+```
+
+SCHAEFER, Tim (Person ID = 4724289) is the inventor with the highest number of patents (19).
+
+
+### Problem 2
+
+#### a) Create a barplot for the annual number of patent applications in the region 'Thüringen' in the period 1990 to 2020.
+
+```{r Problem 2a}
+
+Appln_id_DEG0 <- unique(appid_regpat[appid_regpat$Up_reg_code == "DEG0"]$appln_id)
+ID_prio_DEG0 <- EPO_IPC[EPO_IPC$appln_id %in% Appln_id_DEG0,] # Only the Thuringen patents
+ID_prio_DEG0 <- unique(ID_prio_DEG0[,c("appln_id","prio_year")])
+
+
+## computing the annual number of patent applications in the region 'Thüringen' in the period 1990 to 2020
+
+ID_prio_DEG0 %>%
+  group_by(prio_year) %>%
+  summarise(n_appls = n_distinct(appln_id)) %>%
+  filter(prio_year >= 1990 & prio_year <= 2020) %>%
+  mutate(prio_year = as.factor(prio_year)) %>%
+  ggplot(aes(x=prio_year, y=n_appls)) +
+  geom_bar(stat="identity") +
+  labs(x = "Priority Year", y = '#of patent applications') +
+  ggtitle("Number of patent applications in Thüringen (DEG0)")
+
+```
+
+#### b) Create a barplot for the annual number of patent applications in the regions 'Thüringen' and "Jena" next to each other in the period 1990 to 2020.
+
+```{r Problem 2b}
+
+## combining the data frames for regions of "Thüringen" and "Jena"
+ID_prio_DEG0_DEG03 <- rbind(ID_prio_DEG0, ID_prio_DEG03)
+
+## computing the annual number of patent applications in the regions of 'Thüringen' and 'Jena' in the period 1990 to 2020
+
+ID_prio_DEG0_DEG03 %>%
+  group_by(prio_year) %>%
+  summarise(n_appls = n_distinct(appln_id)) %>%
+  filter(prio_year >= 1990 & prio_year <= 2020) %>%
+  mutate(prio_year = as.factor(prio_year)) %>%
+  ggplot(aes(x=prio_year, y=n_appls)) +
+  geom_bar(stat="identity") + 
+  labs(x = "Priority Year", y = '#of patent applications') +
+  ggtitle("Number of patent applications in Thüringen (DEG0) and Jena (DEG03)")
+```
+
+### Problem 3
+
+#### a) Provide the 5 most frequent 3-digit IPC classes in Jena for the period 2013-2017
+```{r Problem 3a}
+
+ipc_jena <- merge(EPO_IPC, ID_prio_DEG03, by.x = "appln_id", by.y = "appln_id",)
+
+ipc_jena_class <- ipc_jena %>%
+                    select(appln_id, IPC, app_year) %>%
+                    filter(app_year>= 2013 & app_year <= 2017) %>%
+                    count(IPC, sort = TRUE)
+
+View(head(ipc_jena_class,5))
+
+```
+#### b) Look up the technologies associated to the classes in a) from the WIPO (World Intellectual Property Organization) website
+
+*Answer goes here*
+
+G02B021/00    : 	Microscopes
+	
+G02B021/36    :   Arranged for photographic purposes or projection purposes 
+
+H04N005/225   :   Pictorial communication, e.g. Television
+
+G02B027/58    :   Optics for apodization or superresolution; Optical synthetic aperture systems 
+
+G02B021/16    :   Adapted for ultra-violet illumination
+
+
+#### c) How does Jena in the period from 2013 to 2017 compare to the whole of Germany in terms of the most frequent IPC classes?
+
+**Note:** Use the country code "DE" to generate a subset of the data for Germany and compare IPC3 shares.
+
+```{r Problem 3c}
+#Your code and comments go here:
+
+```
+
+Interpret your findings:
+
+*Answer goes here*
