@@ -1,0 +1,132 @@
+---
+title: "Tasks_2"
+author: "Jhalak Gope"
+date: "12 May 2022"
+output: 
+  html_document:
+    toc: true # table of content true
+    toc_depth: 3  # upto three depths of headings (specified by #, ## ### and ####)
+    number_sections: false  ## if you want number sections at each table header
+    theme: lumen  # many options for theme
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
+```
+
+Since the tables that we analyse are quite large, it makes sense to read only some variables. The `fread` command in the package data.table can do this by specifying the variable names in the option `select`
+
+```{r Preparations, message=FALSE}
+# Load the required packages
+library(readr)
+library(dplyr)
+library(data.table)
+
+# Setting up the data
+
+# specify the path to data
+my.path <- "C:/Study/FSU MSc/S22/PatNet Sem/Patnet_data_202101/Patnet_data_202101/"
+# For this task, we only need the following tables
+EPO_IPC <- fread(paste(my.path,"REGPAT_202101/202101_EPO_IPC.txt",sep=""), nrows = Inf)
+EP_Citations <- fread(paste(my.path,"Citations_202101/202101_EPO_CITATIONS.txt",sep=""), select=c("Citing_appln_id", "Cited_Appln_id","Citn_lag_year","Cit_Total", "Cited_pub_nbr"))
+# Generate the IPC3 field
+EPO_IPC$IPC3 <- substr(EPO_IPC$IPC,1,3)
+# Generate a new table with unique combinations of appln_id and IPC3 to avoid duplicate counts.
+EPO_IPC3 <- unique(EPO_IPC[,c("appln_id","IPC3")])
+```
+## Task 1: IPC classes and citations
+### 1a) 
+#### Co-classifications: What are the three-digit IPC classes (IPC3) characterizing the technology of the patent with appln_id == 290375? Display the results. What are technologies associated to the classes (WIPO)?
+
+```{r task1a}
+co_class<-(EPO_IPC3 %>% 
+              filter(appln_id == "290375"))
+co_class
+```
+G02: Optics
+H01: Basic Electric Elements
+
+### 1b)
+#### Find the forward and backward patent citations of this patent and provide the IPC3 classes of these patents. Display the results.
+
+```{r task1b_1}
+cit_back_for<-(EP_Citations %>% 
+              filter(Citing_appln_id == "290375") %>% 
+                select(Citing_appln_id, Cited_pub_nbr, Cited_Appln_id))
+cit_back_for
+```
+
+
+## Task 2: IPC classes and citations
+Now, we do the same as in task 1 but for a larger number of patents
+
+### 2a)
+#### Co-classifications: Select all patents in IPC3 class "G02" and priority year 2012. What are the 10 most common three-digit IPC classes co-classified (co-occured in the same patent) with these patents? Display the results.
+
+```{r task2a}
+ipc_cit<-(EPO_IPC %>% 
+              filter(IPC3 == "G02" & prio_year == 2012) %>% 
+            select(IPC, appln_id, IPC3))
+ipc_ren <- colnames(ipc_cit)[colnames(ipc_cit)=="appln_id"] <-"Citing_appln_id"
+ipc_cit_count <- (ipc_cit %>% 
+                    count(IPC, sort = T))
+
+head(ipc_cit_count, 10)
+```
+
+### 2b)
+#### Find the forward and backward patent citations of the groups of patents (the "G02" patents in 2012) and provide the IPC3 classes of these citations (forward and backward). Display top 10 IPC3 classes in both groups.
+
+
+```{r task2b}
+temp_1 <- EP_Citations[ipc_cit, on ="Citing_appln_id"] 
+temp_2 <-unique(temp_1$Citing_appln_id)
+temp_2 <- (temp_1 %>% 
+             select(Citing_appln_id,Cited_pub_nbr,Cited_Appln_id, IPC, IPC3))
+temp_2
+temp_3 <-temp_2 %>%
+  group_by(IPC) %>%
+  summarise(n = n())
+```
+
+
+### 2c)
+#### Merge your results from tasks 2 a) and b) to generate a data frame that gives the frequencies of occurence (co-classified IPC classes), cited (backward citations) and citing (forward citations) per IPC3 class. Sort the data frame according to co-classification and display the first 10 entries. (NAs in the resulting data frame which indicate that there are no citations or co-occurences of the respective class. Therefore, set the NAs to zero.)
+
+```{r task2c}
+
+```
+
+### 2d)
+#### Compare the distribution of IPC classes on co-classified, backward and forward citations of the groups of patents (the "G02" patents in 2012) with a grouped barplot. Use the top 10 IPC3 classes according to co-occurrence only.
+
+
+```{r task2d, message=F}
+
+```
+
+
+
+## Task 3: Patent quality indicators
+### 3a)
+#### Generated new variable 'granted' for patents in the patent quality data: Value=1 (if granted) and 0 (if NA).
+
+Hint: If there is a grant lag, a patent is granted. If there is no grant lag, it is either not granted yet or rejected.
+
+```{r task3a}
+temp_granted <- fread(paste(my.path,"Indicators_202101/202101_OECD_PATENT_QUALITY_EPO_INDIC.txt",sep=""), select = c("appln_id", "grant_lag","patent_scope", "family_size", "bwd_cits", "npl_cits", "fwd_cits5", "radicalness", "renewal"), nrows = Inf)
+temp_g_new <- !is.na(temp_granted$grant_lag)
+granted <- as.numeric(temp_g_new)
+```
+
+
+### 3b) 
+#### Compare patent quality of granted and ungranted patents (group G02 in 2012) according to the following indicators: patent_scope, family_size, bwd_cits, npl_cits, fwd_cits5, radicalness and renewal. 
+
+Creativity is welcome! Interpret your results.
+
+```{r task3b_avg}
+
+```
+
