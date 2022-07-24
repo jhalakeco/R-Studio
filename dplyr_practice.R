@@ -15,10 +15,13 @@ flights <- tbl_df(hflights) # changing the normal dataframe into a dplyr Tibble
 print(flights, n=20) # only showing 20 rows
 data.frame(head(flights)) # showing the tibble again as a data frame
 
+data("msleep")
+
 # Data manipulation ----
 ?msleep
 glimpse(msleep)
 colnames(msleep)
+
 
 # Renaming a variable
 msleep %>% 
@@ -46,3 +49,28 @@ msleep %>%
          starts_with("sleep"),
          contains("wt")) %>% 
   names()
+
+# filter and arrange
+unique(msleep$order)
+
+
+ # option 1
+msleep %>% 
+  filter((order=="Carnivora"|
+          order=="Primates") & # this is using | (or) and by writing two arguments
+           sleep_total > 8) %>% 
+  select(name, order, sleep_total) %>% 
+  arrange(-sleep_total) %>% # this minus sign will show sleep total from less to more
+  View
+
+msleep %>% 
+  filter(order %in% c("Carnivora","Primates") & # this is another way of combining the arguments inside the dplyr functions
+           sleep_total > 8) %>% 
+  select(name, order, sleep_total) %>% 
+  arrange(order) %>% # here we are arranging order alphabetically
+  View
+
+# Changing the content of the observations (***VERY IMPORTANT TO LOG THE OBSERVATIONS****)
+msleep %>% 
+  mutate(brainwt = brainwt*1000) %>% 
+  View
