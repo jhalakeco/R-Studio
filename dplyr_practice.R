@@ -74,3 +74,41 @@ msleep %>%
 msleep %>% 
   mutate(brainwt = brainwt*1000) %>% 
   View
+
+# conditional change (if_else)
+## logical vector based on a condition
+
+msleep$brainwt
+msleep$brainwt > 0.1 # let's say we want to find the numbers where the brain weight is higher than 0.01, so we ran this code and this will provide us only the logical output (T/F). But we are looking for the actual observations.
+
+size_of_brain <- msleep %>% 
+  select(name, brainwt) %>%
+  drop_na(brainwt) %>%
+  mutate(brain_size = if_else(brainwt > 0.01, "large", "small")) %>% 
+  View()
+
+
+# recoding the data
+## let's say, we want to get 1 instead of large and 2 instead of small in that tibble
+
+size_of_brain %>% 
+  mutate(brain_size = recode(brain_size,
+                             "large"=1,
+                             "small"=2))
+
+#reshaping the data from wide to long or vice versa
+# for this example, msleep data isn't useful. So we use a different data source named gapminder
+library(gapminder)
+View(gapminder)
+
+data <- select(gapminder, country, year, lifeExp)
+
+#converting the long data to a wide data
+wide_data <- data %>% 
+  pivot_wider(names_from = year, values_from = lifeExp) #names_from is the column names I want and the values_from is the row values
+
+# now, changing the wide data from the long data
+long_data <- wide_data %>% 
+  pivot_longer(2:13,
+    names_to = "year",
+    values_to = "lifeExp") # "to" for converting into long data, "from" for converting into wide data
